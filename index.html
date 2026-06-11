@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sortes</title>
+<link rel="icon" type="image/svg+xml" href="tarot-logo/moon_gold.svg" />
+<style>
+  :root {
+    --bg: #0a0612;
+    --bg-2: #160c24;
+    --ink: #e9e1ff;
+    --ink-dim: #9a8fb8;
+    --gold: #d4af37;
+    --gold-bright: #f5d76e;
+    --card-bg: #1a1230;
+    --card-border: #3a2b5a;
+    --shadow: 0 6px 22px rgba(0, 0, 0, 0.55);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: radial-gradient(ellipse at center top, var(--bg-2), var(--bg));
+    color: var(--ink);
+    font-family: "Georgia", "Times New Roman", serif;
+    min-height: 100vh;
+  }
+  header {
+    text-align: center;
+    padding: 20px 16px 6px;
+  }
+  header .logo {
+    display: block;
+    margin: 0 auto 8px;
+    height: 78px;
+    width: auto;
+  }
+  header h1 {
+    margin: 0;
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    font-size: 28px;
+    color: var(--gold-bright);
+  }
+  header .sub {
+    margin-top: 6px;
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    justify-content: center;
+    align-items: center;
+    padding: 18px 16px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+  }
+  .controls button {
+    background: var(--card-bg);
+    color: var(--ink);
+    border: 1px solid var(--card-border);
+    padding: 8px 16px;
+    font-family: inherit;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s ease;
+  }
+  .controls button:hover:not(:disabled) {
+    border-color: var(--gold);
+    color: var(--gold-bright);
+  }
+  .controls button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .controls button.primary {
+    background: var(--gold);
+    color: #1a1230;
+    border-color: var(--gold);
+    font-weight: 600;
+  }
+  .controls button.primary:hover:not(:disabled) {
+    background: var(--gold-bright);
+    color: #1a1230;
+  }
+  .controls button:focus-visible {
+    outline: 2px solid var(--gold-bright);
+    outline-offset: 2px;
+  }
+  .controls label:focus-within {
+    color: var(--ink);
+  }
+  .controls label {
+    font-size: 13px;
+    color: var(--ink-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    user-select: none;
+    cursor: pointer;
+  }
+  .controls input[type="checkbox"] { accent-color: var(--gold); }
+  #counter {
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--ink-dim);
+  }
+  #counter strong { color: var(--gold-bright); }
+
+  /* Pile view */
+  #pileView {
+    position: relative;
+    width: 100%;
+    padding: 6px 12px 12px;
+  }
+  .pile-hint {
+    text-align: center;
+    color: var(--ink-dim);
+    font-size: 13px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .pile-grid {
+    position: relative;
+    width: 100%;
+    /* height set by JS */
+  }
+  .card {
+    position: absolute;
+    width: var(--card-w, 80px);
+    height: var(--card-h, 128px);
+    background: #16365c var(--card-back) center / cover no-repeat;
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, outline-color 0.15s ease;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+  .card:hover {
+    z-index: 1000 !important;
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.35);
+  }
+  .card:focus-visible {
+    outline-color: var(--gold-bright);
+    z-index: 998 !important;
+  }
+  .card.selected {
+    outline-color: var(--gold-bright);
+    z-index: 999 !important;
+    box-shadow: 0 12px 34px rgba(245, 215, 110, 0.45);
+  }
+
+  /* Spread view */
+  #spreadView {
+    padding: 16px 16px 10px;
+    display: none;
+  }
+  .spread-title {
+    text-align: center;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 14px;
+  }
+  .spread-row {
+    display: flex;
+    flex-wrap: nowrap;          /* desktop: one row of 6 (JS sizes the cards) */
+    gap: clamp(8px, 1vw, 18px);
+    justify-content: center;
+    align-items: flex-start;
+    margin: 0 auto;
+    padding: 8px 6px 10px;
+  }
+  .spread-card {
+    flex: 0 0 auto;
+    width: var(--spread-card-w, 200px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .spread-card .face {
+    width: 100%;
+    aspect-ratio: 5 / 8;
+    background: #fff;
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .spread-card .face img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .spread-card.reversed .face img { transform: rotate(180deg); }
+  .spread-card .name {
+    font-size: clamp(13px, 1.4vw, 19px);
+    color: var(--ink);
+    line-height: 1.2;
+    margin-top: 2px;
+  }
+
+  @media (max-width: 700px) {
+    header h1 { font-size: 22px; }
+    header .logo { height: 64px; }
+    /* mobile: wrap into 2 columns, vertical scroll is fine here */
+    .spread-row { flex-wrap: wrap; gap: 14px; padding: 8px 4px 24px; }
+    .spread-card { width: calc(50% - 7px); }  /* 2 per row, 3 rows */
+    .spread-card .name { font-size: 15px; }
+  }
+
+  .credit {
+    text-align: center;
+    padding: 26px 16px 40px;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: var(--ink-dim);
+    border-top: 1px solid rgba(212, 175, 55, 0.12);
+  }
+  .credit a {
+    color: var(--gold);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.4);
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .credit a:hover {
+    color: var(--gold-bright);
+    border-color: var(--gold-bright);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img src="tarot-logo/moon_gold.svg" alt="" class="logo" />
+  <h1>Sortes</h1>
+  <p class="sub">Six-card oracle reading</p>
+</header>
+
+<main>
+  <div class="controls" role="toolbar" aria-label="Reading controls">
+    <button id="shuffleBtn" type="button">Shuffle</button>
+    <label id="invertedToggleLabel"><input type="checkbox" id="invertedToggle" checked /> Allow reversed</label>
+    <span id="counter" aria-live="polite" aria-atomic="true"><strong id="counterCount">0</strong> / 6 selected</span>
+    <button id="resetBtn" type="button" style="display:none">New Reading</button>
+  </div>
+
+  <section id="pileView" aria-label="Card pile">
+    <p class="pile-hint" id="pileInstructions">Click any six cards</p>
+    <div id="pileGrid" class="pile-grid" role="group" aria-labelledby="pileInstructions"></div>
+  </section>
+
+  <section id="spreadView" aria-label="Your reading">
+    <p class="spread-title">Your Reading</p>
+    <div id="spreadRow" class="spread-row"></div>
+  </section>
+</main>
+
+<footer class="credit">
+  <p>Artwork by <a href="https://www.ashleighyorkart.com/" target="_blank" rel="noopener noreferrer">Ashleigh York</a>
+  &middot; <a href="https://www.instagram.com/ashleighyorkart/" target="_blank" rel="noopener noreferrer">Instagram</a></p>
+</footer>
+
+<script>
+/* ============================================================
+   IMAGE CONFIG
+   ------------------------------------------------------------
+   The card back is inlined as a tiny SVG below (see BACK_SVG).
+   Only the 43 card fronts are referenced as external images,
+   loaded from the cards/ folder (optimized 700px-wide WebP).
+   ============================================================ */
+
+/* Inline card back — no separate inscription needed, no per-card network
+   requests. Edit the SVG below to change the back art. ~2.4 KB. */
+const BACK_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 320"><rect width="200" height="320" fill="#16365c"/><rect x="6" y="6" width="188" height="308" fill="none" stroke="#d4af37" stroke-width="0.5" opacity="0.55"/><g stroke="#d4af37" stroke-width="0.8" fill="none" stroke-linecap="round"><path d="M14 14h30M14 14v30M14 44q3-3 6 0t6 0M44 14q-3 3 0 6t0 6"/><path d="M186 14h-30M186 14v30M186 44q-3-3-6 0t-6 0M156 14q3 3 0 6t0 6"/><path d="M14 306h30M14 306v-30M14 276q3 3 6 0t6 0M44 306q-3-3 0-6t0-6"/><path d="M186 306h-30M186 306v-30M186 276q-3 3-6 0t-6 0M156 306q3-3 0-6t0-6"/></g><g stroke="#d4af37" stroke-width="0.55" stroke-linecap="round"><line x1="130" y1="160" x2="150" y2="160"/><line x1="129" y1="167.8" x2="140.6" y2="170.9"/><line x1="126" y1="175" x2="143.3" y2="185"/><line x1="121.2" y1="181.2" x2="129.7" y2="189.7"/><line x1="115" y1="186" x2="125" y2="203.3"/><line x1="107.8" y1="189" x2="110.9" y2="200.6"/><line x1="100" y1="190" x2="100" y2="210"/><line x1="92.2" y1="189" x2="89.1" y2="200.6"/><line x1="85" y1="186" x2="75" y2="203.3"/><line x1="78.8" y1="181.2" x2="70.3" y2="189.7"/><line x1="74" y1="175" x2="56.7" y2="185"/><line x1="71" y1="167.8" x2="59.4" y2="170.9"/><line x1="70" y1="160" x2="50" y2="160"/><line x1="71" y1="152.2" x2="59.4" y2="149.1"/><line x1="74" y1="145" x2="56.7" y2="135"/><line x1="78.8" y1="138.8" x2="70.3" y2="130.3"/><line x1="85" y1="134" x2="75" y2="116.7"/><line x1="92.2" y1="131" x2="89.1" y2="119.4"/><line x1="100" y1="130" x2="100" y2="110"/><line x1="107.8" y1="131" x2="110.9" y2="119.4"/><line x1="115" y1="134" x2="125" y2="116.7"/><line x1="121.2" y1="138.8" x2="129.7" y2="130.3"/><line x1="126" y1="145" x2="143.3" y2="135"/><line x1="129" y1="152.2" x2="140.6" y2="149.1"/></g><circle cx="100" cy="160" r="24" fill="#d4af37"/><circle cx="112" cy="156" r="21" fill="#16365c"/><g fill="#d4af37"><circle cx="118" cy="158" r="0.9"/><circle cx="122" cy="164" r="0.6"/><circle cx="114" cy="172" r="0.7"/><circle cx="84" cy="148" r="0.6"/><circle cx="80" cy="170" r="0.5"/></g><text x="100" y="60" text-anchor="middle" fill="#d4af37" font-family="Georgia,serif" font-size="11" letter-spacing="3">JP</text><text x="100" y="268" text-anchor="middle" fill="#d4af37" font-family="Georgia,serif" font-size="11" letter-spacing="3" transform="rotate(180 100 265)">GH</text></svg>';
+const BACK_SRC = "data:image/svg+xml;utf8," + encodeURIComponent(BACK_SVG);
+
+const CARDS = [
+  { name: "THE FIRE",                file: "cards/the-fire.webp" },
+  { name: "THE CLIMBING VINE",       file: "cards/the-climbing-vine.webp" },
+  { name: "BOUNTIFUL GARDEN BED",    file: "cards/bountiful-garden-bed.webp" },
+  { name: "THE LEAVES OF THREE",     file: "cards/the-leaves-of-three.webp" },
+  { name: "FLOWING STREAM",          file: "cards/flowing-stream.webp" },
+  { name: "SIX OF ROSES",            file: "cards/six-of-roses.webp" },
+  { name: "EMPTY POT",               file: "cards/empty-pot.webp" },
+  { name: "TIMELY WAVE",             file: "cards/timely-wave.webp" },
+  { name: "BENEVOLENT MUSHROOM",     file: "cards/benevolent-mushroom.webp" },
+  { name: "ALL SEEING FRY",          file: "cards/all-seeing-fry.webp" },
+  { name: "THE SPROUT",              file: "cards/the-sprout.webp" },
+  { name: "THE SNAKE",               file: "cards/the-snake.webp" },
+  { name: "FATHER SUN",              file: "cards/father-sun.webp" },
+  { name: "MOTHER MOON",             file: "cards/mother-moon.webp" },
+  { name: "TWO OF MONSTERA",         file: "cards/two-of-monstera.webp" },
+  { name: "ELECTRIC CHARGING STATION", file: "cards/electric-charging-station.webp" },
+  { name: "CRAZY CLAW CLIP",         file: "cards/crazy-claw-clip.webp" },
+  { name: "SCRUB MOMMY",             file: "cards/scrub-mommy.webp" },
+  { name: "STEADY STEAMER",          file: "cards/steady-steamer.webp" },
+  { name: "PINSTRIPE APRON",         file: "cards/pinstripe-apron.webp" },
+  { name: "THE PROTECTIVE GOGGLES",  file: "cards/the-protective-goggles.webp" },
+  { name: "TINY SPOON",              file: "cards/tiny-spoon.webp" },
+  { name: "REFRESHING WATER BOTTLE", file: "cards/refreshing-water-bottle.webp" },
+  { name: "HEALING HEADACHE CAP",    file: "cards/healing-headache-cap.webp" },
+  { name: "THE HALF EATEN DINOSAUR", file: "cards/the-half-eaten-dinosaur.webp" },
+  { name: "THE LIGHT UP COLLAR",     file: "cards/the-light-up-collar.webp" },
+  { name: "BINO THE BOY",            file: "cards/bino-the-boy.webp" },
+  { name: "COZY SLIPPERS",           file: "cards/cozy-slippers.webp" },
+  { name: "THE HANDY BUG ZAPPER",    file: "cards/the-handy-bug-zapper.webp" },
+  { name: "KEY",                     file: "cards/key.webp" },
+  { name: "SHADY TREE",              file: "cards/shady-tree.webp" },
+  { name: "THE UNSENT LETTER",       file: "cards/the-unsent-letter.webp" },
+  { name: "STEADY ANCHOR",           file: "cards/steady-anchor.webp" },
+  { name: "THE HEART",               file: "cards/the-heart.webp" },
+  { name: "LOVE BIRDS",              file: "cards/love-birds.webp" },
+  { name: "THE CROSSROADS",          file: "cards/the-crossroads.webp" },
+  { name: "DREAMY CLOUDS",           file: "cards/dreamy-clouds.webp" },
+  { name: "LUCKY CLOVER",            file: "cards/lucky-clover.webp" },
+  { name: "GRINCH PAJAMAS",          file: "cards/grinch-pajamas.webp" },
+  { name: "BED SIDE WINE",           file: "cards/bed-side-wine.webp" },
+  { name: "WOODEN SPOON",            file: "cards/wooden-spoon.webp" },
+  { name: "FLOATING CANDLE",         file: "cards/floating-candle.webp" },
+  { name: "NOURISHING BODY WASH",    file: "cards/nourishing-body-wash.webp" }
+];
+
+function imageUrl(c) {
+  return encodeURI(c.file);
+}
+
+/* ---------- State ---------- */
+// deck = array of { idx, reversed } in current order; idx points into CARDS
+let deck = [];
+let selected = []; // array of deck indices (positions in `deck`)
+let layoutSeed = Date.now();
+let pileCardEls = []; // persistent card DOM elements, index = deck position
+const els = {
+  shuffleBtn: document.getElementById("shuffleBtn"),
+  invertedToggle: document.getElementById("invertedToggle"),
+  invertedToggleLabel: document.getElementById("invertedToggleLabel"),
+  counter: document.getElementById("counter"),
+  counterCount: document.getElementById("counterCount"),
+  resetBtn: document.getElementById("resetBtn"),
+  pileView: document.getElementById("pileView"),
+  pileGrid: document.getElementById("pileGrid"),
+  spreadView: document.getElementById("spreadView"),
+  spreadRow: document.getElementById("spreadRow"),
+  header: document.querySelector("header"),
+  controls: document.querySelector(".controls"),
+  footer: document.querySelector(".credit"),
+  pileHint: document.getElementById("pileInstructions"),
+  spreadTitle: document.querySelector(".spread-title")
+};
+
+const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+// Card back lives in CSS as a custom property so each card div doesn't need its own <img>
+els.pileGrid.style.setProperty("--card-back", `url("${BACK_SRC}")`);
+
+/* ---------- Deck operations ---------- */
+function fisherYates(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function buildDeck() {
+  const allowReversed = els.invertedToggle.checked;
+  deck = CARDS.map((_, i) => ({
+    idx: i,
+    reversed: allowReversed ? Math.random() < 0.5 : false
+  }));
+  fisherYates(deck);
+}
+
+/* ---------- Rendering ---------- */
+function seededFloat(i, salt) {
+  const v = Math.sin((i + 1) * 9301 + (salt + 1) * 49297 + layoutSeed * 1237) * 233280;
+  return v - Math.floor(v);
+}
+
+function computePositions(n, cW, cH, cardW, cardH, pileRadius) {
+  const cx = cW / 2;
+  const cy = cH / 2;
+  // Keep card centers inside the circle so the pile reads as a tight disc
+  const maxR = Math.max(0, pileRadius - Math.min(cardW, cardH) * 0.25);
+  return Array.from({ length: n }, (_, i) => {
+    // sqrt distribution → uniform area coverage (denser-looking than linear)
+    const r = Math.sqrt(seededFloat(i, 0)) * maxR;
+    const angle = seededFloat(i, 1) * Math.PI * 2;
+    return {
+      x: cx + r * Math.cos(angle) - cardW / 2,
+      y: cy + r * Math.sin(angle) - cardH / 2,
+      // ±25° jitter, plus a seeded end-for-end flip for ~half the cards so the
+      // pile points in various directions (JP up on some, GH up on others)
+      rot: (seededFloat(i, 2) - 0.5) * 50 + (seededFloat(i, 4) < 0.5 ? 180 : 0),
+      z: Math.floor(seededFloat(i, 3) * 200) + 1,
+    };
+  });
+}
+
+function renderPile(animate) {
+  animate = !!animate && !motionQuery.matches;
+  const n = deck.length;
+  const containerW = Math.max(320, els.pileView.clientWidth - 24);
+
+  const cardW = containerW < 520 ? 72 : (containerW < 760 ? 88 : 104);
+  const cardH = Math.round(cardW * 1.6);
+
+  // Pile diameter: ~50% of width on desktop, larger fraction on smaller screens.
+  // Reserve the actual height of the surrounding chrome (header, controls, hint,
+  // footer) so the disc + card overhang always fits the viewport without scrolling.
+  const chromeH = els.header.offsetHeight + els.controls.offsetHeight
+    + els.pileHint.offsetHeight + els.footer.offsetHeight + 48;
+  const availableH = Math.max(300, window.innerHeight - chromeH);
+  const widthBasedDiameter = containerW < 520
+    ? containerW * 0.85
+    : containerW < 760
+    ? containerW * 0.65
+    : containerW * 0.5;
+  // Cap by available height so the pile + card overhang fits without overlapping controls
+  const pileDiameter = Math.max(260, Math.min(widthBasedDiameter, availableH - cardH));
+  const pileRadius = pileDiameter / 2;
+
+  // Container exactly tall enough to hold the circular pile plus card overhang
+  const containerH = pileDiameter + cardH;
+
+  els.pileGrid.style.height = containerH + "px";
+  els.pileGrid.style.setProperty("--card-w", cardW + "px");
+  els.pileGrid.style.setProperty("--card-h", cardH + "px");
+
+  const positions = computePositions(n, containerW, containerH, cardW, cardH, pileRadius);
+
+  if (pileCardEls.length === n) {
+    // Update positions on existing elements (with or without animation)
+    pileCardEls.forEach((el, i) => {
+      const p = positions[i];
+      if (animate) {
+        const delay = (seededFloat(i, 5) * 0.22).toFixed(3);
+        el.style.transition = `left 0.52s ease ${delay}s, top 0.52s ease ${delay}s, transform 0.52s ease ${delay}s`;
+      } else {
+        el.style.transition = "none";
+      }
+      el.style.left = p.x + "px";
+      el.style.top = p.y + "px";
+      el.style.transform = `rotate(${p.rot.toFixed(2)}deg)`;
+      el.style.zIndex = String(p.z);
+      const isSelected = selected.includes(i);
+      el.classList.toggle("selected", isSelected);
+      el.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    });
+    if (animate) {
+      // Clear inline transitions after animation so CSS hover transitions resume
+      setTimeout(() => {
+        pileCardEls.forEach(el => { el.style.transition = ""; });
+      }, 850);
+    }
+  } else {
+    // Full rebuild (first render or element count mismatch)
+    els.pileGrid.replaceChildren();
+    pileCardEls = [];
+    const frag = document.createDocumentFragment();
+    deck.forEach((_, i) => {
+      const p = positions[i];
+      const el = document.createElement("div");
+      el.className = "card";
+      el.setAttribute("role", "button");
+      el.setAttribute("tabindex", "0");
+      el.setAttribute("aria-label", `Card ${i + 1} of ${n}, face down`);
+      el.setAttribute("aria-pressed", selected.includes(i) ? "true" : "false");
+      el.style.transition = "none";
+      el.style.left = p.x + "px";
+      el.style.top = p.y + "px";
+      el.style.transform = `rotate(${p.rot.toFixed(2)}deg)`;
+      el.style.zIndex = String(p.z);
+      el.dataset.deckPos = String(i);
+      if (selected.includes(i)) el.classList.add("selected");
+      frag.appendChild(el);
+      pileCardEls.push(el);
+    });
+    els.pileGrid.appendChild(frag);
+  }
+}
+
+function onCardClick(deckPos, el) {
+  const at = selected.indexOf(deckPos);
+  if (at >= 0) {
+    selected.splice(at, 1);
+    el.classList.remove("selected");
+    el.setAttribute("aria-pressed", "false");
+  } else {
+    if (selected.length >= 6) return; // cap
+    selected.push(deckPos);
+    el.classList.add("selected");
+    el.setAttribute("aria-pressed", "true");
+  }
+  updateCounter();
+  if (selected.length === 6) {
+    // brief beat so the user sees the 6th card register before the transition
+    setTimeout(() => {
+      renderSpread();
+      showSpread();   // must precede fitSpread so the row has a measurable width
+      fitSpread();
+    }, 350);
+  }
+}
+
+// Desktop: size the 6 face-up cards so the whole row fits the viewport both
+// horizontally (one row of 6) and vertically (no scroll). Mobile keeps the
+// CSS 2-up wrap, so this only drives the >700px layout.
+function fitSpread() {
+  if (window.innerWidth <= 700) {
+    els.spreadRow.style.removeProperty("--spread-card-w");
+    return;
+  }
+  const n = Math.max(1, selected.length);
+  const rowStyle = getComputedStyle(els.spreadRow);
+  const gap = parseFloat(rowStyle.columnGap) || 12;
+  const padX = parseFloat(rowStyle.paddingLeft) + parseFloat(rowStyle.paddingRight);
+  const availW = els.spreadRow.clientWidth - padX;
+  const wByWidth = (availW - gap * (n - 1)) / n;
+
+  // Height budget: viewport minus header, controls, spread title, footer, and
+  // the space below each face (reserve ~2 lines of card name + section padding).
+  const chromeH = els.header.offsetHeight + els.controls.offsetHeight
+    + els.spreadTitle.offsetHeight + els.footer.offsetHeight + 140;
+  const hAvail = window.innerHeight - chromeH;
+  const wByHeight = hAvail / 1.6; // face aspect-ratio is 5/8 (h = 1.6w)
+
+  const w = Math.max(96, Math.min(wByWidth, wByHeight));
+  els.spreadRow.style.setProperty("--spread-card-w", w + "px");
+}
+
+function updateCounter() {
+  els.counterCount.textContent = String(selected.length);
+}
+
+function renderSpread() {
+  const frag = document.createDocumentFragment();
+  selected.forEach((deckPos) => {
+    const slot = deck[deckPos];
+    const card = CARDS[slot.idx];
+
+    const wrap = document.createElement("div");
+    wrap.className = "spread-card" + (slot.reversed ? " reversed" : "");
+
+    const face = document.createElement("div");
+    face.className = "face";
+    const img = document.createElement("img");
+    img.src = imageUrl(card);
+    img.alt = card.name + (slot.reversed ? ", reversed" : "");
+    img.decoding = "async";
+    img.draggable = false;
+    face.appendChild(img);
+
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = card.name;
+
+    wrap.appendChild(face);
+    wrap.appendChild(name);
+    frag.appendChild(wrap);
+  });
+  els.spreadRow.replaceChildren(frag);
+}
+
+/* ---------- View switching ---------- */
+function showPile() {
+  els.spreadView.style.display = "none";
+  els.pileView.style.display = "block";
+  els.shuffleBtn.style.display = "";
+  els.invertedToggleLabel.style.display = "";
+  els.counter.style.display = "";
+  els.resetBtn.style.display = "none";
+}
+function showSpread() {
+  els.pileView.style.display = "none";
+  els.spreadView.style.display = "block";
+  els.shuffleBtn.style.display = "none";
+  els.invertedToggleLabel.style.display = "none";
+  els.counter.style.display = "none";
+  els.resetBtn.style.display = "";
+}
+
+/* ---------- Wiring ---------- */
+// Event delegation: a single pair of listeners on the grid handles all 43 cards
+function handlePileActivation(e) {
+  const card = e.target.closest(".card");
+  if (!card || !els.pileGrid.contains(card)) return;
+  const i = Number(card.dataset.deckPos);
+  if (Number.isNaN(i)) return;
+  onCardClick(i, card);
+}
+els.pileGrid.addEventListener("click", handlePileActivation);
+els.pileGrid.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  if (!e.target.closest(".card")) return;
+  e.preventDefault(); // stop Space from scrolling the page
+  handlePileActivation(e);
+});
+
+els.shuffleBtn.addEventListener("click", () => {
+  buildDeck();
+  layoutSeed = Date.now();
+  selected = [];
+  updateCounter();
+  renderPile(true);
+});
+els.invertedToggle.addEventListener("change", () => {
+  const allow = els.invertedToggle.checked;
+  deck.forEach(slot => {
+    slot.reversed = allow ? Math.random() < 0.5 : false;
+  });
+});
+els.resetBtn.addEventListener("click", () => {
+  selected = [];
+  buildDeck();
+  layoutSeed = Date.now();
+  updateCounter();
+  showPile();
+  renderPile();
+});
+
+// Throttle resize to one render per animation frame
+let resizeRaf = null;
+window.addEventListener("resize", () => {
+  if (resizeRaf !== null) return;
+  resizeRaf = requestAnimationFrame(() => {
+    resizeRaf = null;
+    if (els.spreadView.style.display === "block") fitSpread();
+    else renderPile();
+  });
+});
+
+/* ---------- Init: pre-shuffled on load ---------- */
+buildDeck();
+updateCounter();
+renderPile();
+
+// Preload all card fronts so the spread view appears instantly
+CARDS.forEach(card => { const img = new Image(); img.src = imageUrl(card); });
+</script>
+
+</body>
+</html>

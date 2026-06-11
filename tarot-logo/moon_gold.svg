@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="290 225 444 583">
+  <!-- Card: rounded-rectangle outline -->
+  <rect x="302.5" y="237.5" width="417" height="559" rx="28" ry="28"
+        fill="none" stroke="#d4af37" stroke-width="17"/>
+
+  <!-- Crescent moon -->
+  <path d="M 546 359
+           A 156 156 0 1 0 666 546
+           A 115 115 0 1 1 546 359 Z"
+        fill="#d4af37"/>
+
+  <!-- 4-point sparkle star -->
+  <path d="M 584 424.5
+           L 593 456.5 L 625 465.5 L 593 474.5
+           L 584 506.5 L 575 474.5 L 543 465.5 L 575 456.5 Z"
+        fill="#f5d76e"/>
+</svg>
